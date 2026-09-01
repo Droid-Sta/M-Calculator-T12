@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Mazda Temic 12 Analyzer</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #1e1e2e; color: #cdd6f4; padding: 20px; }
+        .card { background: #313244; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        h2 { margin-top: 0; color: #f38ba8; }
+        .label { color: #a6adc8; font-size: 0.9em; }
+        .value { font-family: monospace; font-size: 1.4em; margin-top: 5px; word-break: break-all; color: #a6e3a1; }
+        .result-item { margin-bottom: 15px; }
+        input[type="file"], select { margin-bottom: 10px; width: 100%; padding: 10px; background: #45475a; color: white; border: none; border-radius: 8px; }
+        button { background: #89b4fa; color: #11111b; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; }
+        button:disabled { opacity: 0.5; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Mazda Temic 12</h2>
+        <p class="label">Выберите Header</p>
+        <select id="headerSelect">
+            <option value="66 0F">66 0F</option>
+            <option value="66 F0">66 F0</option>
+        </select>
+        
+        <p class="label">Загрузите файл дампа (.bin)</p>
+        <input type="file" id="fileInput" accept=".bin">
+        <button id="processBtn" onclick="processFile()" disabled>Обработать дамп</button>
+    </div>
+
+    <div id="output" style="display: none;">
+        <div class="card">
+            <h2>Результат (Synchro + 5 ключей)</h2>
+            
+            <div class="result-item"><div class="label">Synchro (0x01 - 0x06)</div><div class="value" id="synchro"></div></div>
+
+            <div class="result-item"><div class="label">Key 1 (Header + Raw Data + Sum)</div><div class="value" id="key1"></div></div>
+            <div class="result-item"><div class="label">Key 2 (Header + Raw Data + Sum)</div><div class="value" id="key2"></div></div>
+            <div class="result-item"><div class="label">Key 3 (Header + Raw Data + Sum)</div><div class="value" id="key3"></div></div>
+            <div class="result-item"><div class="label">Key 4 (Header + Raw Data + Sum)</div><div class="value" id="key4"></div></div>
+            <div class="result-item"><div class="label">Key 5 (Header + Raw Data + Sum)</div><div class="value" id="key5"></div></div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const fileInput = document.getElementById('fileInput');
+        const processBtn = document.getElementById('processBtn');
+        const headerSelect = document.getElementById('headerSelect');
+        
+        fileInput.addEventListener('change', function() {
+            processBtn.disabled = !this.files.length;
+        });
+        
+        headerSelect.addEventListener('change', function() {
+            if (fileInput.files.length) processFile();
+        });
+
+        // Функция простой контрольной суммы (как в прототипе VAG)
+        function calculateChecksum(data) {
+            let sum = 0;
+            for (let i = 0; i < data.length; i++) {
+                sum = (sum + data[i]) & 0xFF;
+            }
+            return sum.toString(16).toUpperCase().padStart(2, '0');
+        }
+
+        function hexToString(hexArray) {
+            return Array.from(hexArray).map(b => b.toString(16).padStart(2, '0')).join(' ').toUpperCase();
+        }
+
+        function processFile() {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const arrayBuffer = e.target.result;
+                const data = new Uint8Array(arrayBuffer);
+
+                // Используем выбранный Header
+                const headerBytes = headerSelect.value.split(' ');
+                const header = [parseInt(headerBytes[0], 16), parseInt(headerBytes[1], 16)];
+
+                // Получаем Synchro со смещения 0x01 (5 байт)
+                const synchro = data.slice(0x01, 0x06);
+
+                // Смещения ключей идут друг за другом по 5 байт: 0x30, 0x35, 0x3A, 0x3F, 0x44
+                const key1_id = data.slice(0x30, 0x35);
+                const key2_id = data.slice(0x35, 0x3A);
+                const key3_id = data.slice(0x3A, 0x3F);
+                const key4_id = data.slice(0x3F, 0x44);
+                const key5_id = data.slice(0x44, 0x49);
+
+                // Собираем блоки и считаем простую сумму
+                const key1_block = [...header, ...key1_id];
+                const key2_block = [...header, ...key2_id];
+                const key3_block = [...header, ...key3_id];
+                const key4_block = [...header, ...key4_id];
+                const key5_block = [...header, ...key5_id];
+
+                const checksum1 = calculateChecksum(key1_block);
+                const checksum2 = calculateChecksum(key2_block);
+                const checksum3 = calculateChecksum(key3_block);
+                const checksum4 = calculateChecksum(key4_block);
+                const checksum5 = calculateChecksum(key5_block);
+
+                // Финальные строки
+                const synchro_str = hexToString(synchro);
+                const key1_full = hexToString(header) + ' ' + hexToString(key1_id) + ' ' + checksum1;
+                const key2_full = hexToString(header) + ' ' + hexToString(key2_id) + ' ' + checksum2;
+                const key3_full = hexToString(header) + ' ' + hexToString(key3_id) + ' ' + checksum3;
+                const key4_full = hexToString(header) + ' ' + hexToString(key4_id) + ' ' + checksum4;
+                const key5_full = hexToString(header) + ' ' + hexToString(key5_id) + ' ' + checksum5;
+
+                // Показываем результат
+                document.getElementById('output').style.display = 'block';
+
+                document.getElementById('synchro').innerText = synchro_str;
+                document.getElementById('key1').innerText = key1_full;
+                document.getElementById('key2').innerText = key2_full;
+                document.getElementById('key3').innerText = key3_full;
+                document.getElementById('key4').innerText = key4_full;
+                document.getElementById('key5').innerText = key5_full;
+
+                tg.HapticFeedback.impactOccurred('success');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+</html>
