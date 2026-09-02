@@ -3,69 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-    <title>Mazda Temic 12 Analyzer</title>
+    <title>Mazda Temic 12</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #1e1e2e; color: #cdd6f4; padding: 20px; }
-        .card { background: #313244; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-        h2 { margin-top: 0; color: #f38ba8; }
-        .label { color: #a6adc8; font-size: 0.9em; }
-        .value { font-family: monospace; font-size: 1.4em; margin-top: 5px; word-break: break-all; color: #a6e3a1; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(to bottom, #203a43, #2c5364);
+            min-height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            color: #fff; padding: 20px;
+        }
+        .container {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(10px);
+            border-radius: 20px; padding: 30px; max-width: 500px; width: 100%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2);
+        }
+        h1 { text-align: center; margin-bottom: 10px; font-size: 1.6rem; letter-spacing: 1px; }
+        .subtitle { text-align: center; opacity: 0.8; margin-bottom: 20px; font-size: 0.9rem; }
+
+        /* Вкладки */
+        .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .tab {
+            flex: 1; padding: 10px; border: none; border-radius: 10px;
+            background: rgba(255,255,255,0.1); color: white; cursor: pointer; font-weight: 600;
+            transition: 0.3s;
+        }
+        .tab.active { background: #4a90e2; box-shadow: 0 4px 12px rgba(74,144,226,0.4); }
+        .mode-block { display: none; }
+        .mode-block.active { display: block; }
+
+        label { display: block; margin-top: 15px; font-size: 0.9rem; opacity: 0.9; }
+
+        /* Стили для input и select */
+        input[type="text"], input[type="file"], select {
+            width: 100%; padding: 12px; margin-top: 5px; border-radius: 10px;
+            border: none; background: rgba(255,255,255,0.15); color: #fff;
+            font-size: 1rem; font-family: monospace; letter-spacing: 2px;
+            outline: none; transition: 0.3s;
+        }
+        input:focus, select:focus { background: rgba(255,255,255,0.25); box-shadow: 0 0 0 2px #4a90e2; }
+
+        /* Стрелочка для select */
+        .custom-select {
+            position: relative; width: 100%;
+        }
+        .custom-select select {
+            appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 35px;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23ffffff%22%20d%3D%22M2%204l4%204%204-4z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat; background-position: right 10px center;
+        }
+        select option { background: #203a43; color: #fff; }
+        
+        input[type="file"]::file-selector-button {
+            background: #4a90e2; color: white; border: none; padding: 8px 12px;
+            border-radius: 8px; margin-right: 10px; font-family: inherit; cursor: pointer;
+        }
+
+        button {
+            width: 100%; padding: 14px; margin-top: 20px; border: none; border-radius: 12px;
+            background: linear-gradient(135deg, #4a90e2, #357abd); color: white;
+            font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(74,144,226,0.4); }
+        button:active { transform: translateY(0); }
+        button:disabled { opacity: 0.5; transform: none; box-shadow: none; cursor: default; }
+
+        .result {
+            margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.3);
+            border-radius: 12px; display: none; word-break: break-all;
+            font-family: monospace; font-size: 1.1rem; letter-spacing: 2px; text-align: center;
+        }
         .result-item { margin-bottom: 15px; }
-        input[type="file"], select { margin-bottom: 10px; width: 100%; padding: 10px; background: #45475a; color: white; border: none; border-radius: 8px; }
-        button { background: #89b4fa; color: #11111b; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; }
-        button:disabled { opacity: 0.5; }
+        .result-item:last-child { margin-bottom: 0; }
+        .result-label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.8rem; opacity: 0.7; letter-spacing: 0; margin-bottom: 5px; }
+        .result-value { font-family: monospace; font-size: 1.2rem; letter-spacing: 2px; color: #ffffff; }
+        
+        .info { margin-top: 15px; font-size: 0.8rem; opacity: 0.7; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>Mazda Temic 12</h2>
-        <p class="label">Выберите Header</p>
-        <select id="headerSelect">
-            <option value="66 0F">66 0F</option>
-            <option value="66 F0">66 F0</option>
-        </select>
-        
-        <p class="label">Загрузите файл дампа (.bin)</p>
-        <input type="file" id="fileInput" accept=".bin">
-        <button id="processBtn" onclick="processFile()" disabled>Обработать дамп</button>
-    </div>
+    <div class="container">
+        <h1>🔑 Mazda Temic 12</h1>
+        <div class="subtitle">Transponder Analyzer</div>
 
-    <div id="output" style="display: none;">
-        <div class="card">
-            <h2>Результат (Synchro + 5 ключей)</h2>
+        <!-- Переключатель режимов -->
+        <div class="tabs">
+            <button class="tab active" data-target="file-mode">Загрузка дампа</button>
+            <button class="tab" data-target="manual-mode">Ручной ввод</button>
+        </div>
+
+        <!-- Режим загрузки файла -->
+        <div id="file-mode" class="mode-block active">
+            <label for="fileInput">Загрузите файл дампа (.bin)</label>
+            <input type="file" id="fileInput" accept=".bin">
+        </div>
+
+        <!-- Режим ручного ввода -->
+        <div id="manual-mode" class="mode-block">
+            <label for="manualInput">Введите 5 байт</label>
+            <input type="text" id="manualInput" placeholder="84 8E 06 AE 94" maxlength="14">
+        </div>
+
+        <label for="headerSelect">Выберите Header</label>
+        <div class="custom-select">
+            <select id="headerSelect">
+                <option value="66 F0">66 F0</option>
+                <option value="66 0F">66 0F</option>
+            </select>
+        </div>
+
+        <button id="processBtn" disabled>Обработать дамп</button>
+
+        <div class="result" id="result">
+            <div class="result-item" id="synchro-block" style="display: none;">
+                <div class="result-label">Synchro ECU</div>
+                <div class="result-value" id="synchro"></div>
+            </div>
             
-            <div class="result-item"><div class="label">Synchro (0x01 - 0x06)</div><div class="value" id="synchro"></div></div>
-
-            <div class="result-item"><div class="label">Key 1 (Header + Raw Data + Sum)</div><div class="value" id="key1"></div></div>
-            <div class="result-item"><div class="label">Key 2 (Header + Raw Data + Sum)</div><div class="value" id="key2"></div></div>
-            <div class="result-item"><div class="label">Key 3 (Header + Raw Data + Sum)</div><div class="value" id="key3"></div></div>
-            <div class="result-item"><div class="label">Key 4 (Header + Raw Data + Sum)</div><div class="value" id="key4"></div></div>
-            <div class="result-item"><div class="label">Key 5 (Header + Raw Data + Sum)</div><div class="value" id="key5"></div></div>
+            <div class="result-item">
+                <div class="result-label">Key 1 (Header + Raw Data + Sum)</div>
+                <div class="result-value" id="key1"></div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">Key 2 (Header + Raw Data + Sum)</div>
+                <div class="result-value" id="key2"></div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">Key 3 (Header + Raw Data + Sum)</div>
+                <div class="result-value" id="key3"></div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">Key 4 (Header + Raw Data + Sum)</div>
+                <div class="result-value" id="key4"></div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">Key 5 (Header + Raw Data + Sum)</div>
+                <div class="result-value" id="key5"></div>
+            </div>
         </div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        tg.ready(); tg.expand();
 
         const fileInput = document.getElementById('fileInput');
+        const manualInput = document.getElementById('manualInput');
         const processBtn = document.getElementById('processBtn');
         const headerSelect = document.getElementById('headerSelect');
-        
-        fileInput.addEventListener('change', function() {
-            processBtn.disabled = !this.files.length;
-        });
-        
-        headerSelect.addEventListener('change', function() {
-            if (fileInput.files.length) processFile();
+        const resultDiv = document.getElementById('result');
+
+        // Переключение вкладок
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                tabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                document.querySelectorAll('.mode-block').forEach(block => block.classList.remove('active'));
+                document.getElementById(this.getAttribute('data-target')).classList.add('active');
+                
+                // Обновляем состояние кнопки при переключении
+                updateButtonState();
+            });
         });
 
-        // Функция простой контрольной суммы (как в прототипе VAG)
+        function updateButtonState() {
+            const isFileMode = document.getElementById('file-mode').classList.contains('active');
+            if (isFileMode) {
+                processBtn.disabled = !fileInput.files.length;
+            } else {
+                processBtn.disabled = !manualInput.value.trim();
+            }
+        }
+
+        fileInput.addEventListener('change', updateButtonState);
+        manualInput.addEventListener('input', updateButtonState);
+        headerSelect.addEventListener('change', processFile);
+
+        // Главный обработчик кнопки (исправление бага)
+        processBtn.addEventListener('click', processFile);
+
+        // Функция простой контрольной суммы
         function calculateChecksum(data) {
             let sum = 0;
             for (let i = 0; i < data.length; i++) {
@@ -79,62 +199,91 @@
         }
 
         function processFile() {
-            const file = fileInput.files[0];
-            if (!file) return;
+            const isFileMode = document.getElementById('file-mode').classList.contains('active');
+            let data; // Массив байт
+            let isManual = false;
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const arrayBuffer = e.target.result;
-                const data = new Uint8Array(arrayBuffer);
+            if (isFileMode) {
+                const file = fileInput.files[0];
+                if (!file) return;
 
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    data = new Uint8Array(e.target.result);
+                    processData(data, true);
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                const text = manualInput.value.trim();
+                if (!text) return;
+                
+                const parts = text.split(/[\s:-]+/).filter(p => p.length > 0);
+                if (parts.length !== 5) {
+                    alert('Ошибка: Введите ровно 5 байт через пробел!');
+                    return;
+                }
+
+                data = parts.map(p => parseInt(p, 16));
+                if (data.some(isNaN)) {
+                    alert('Ошибка: Некорректный HEX!');
+                    return;
+                }
+                processData(data, false);
+            }
+
+            function processData(data, isFromFile) {
                 // Используем выбранный Header
                 const headerBytes = headerSelect.value.split(' ');
                 const header = [parseInt(headerBytes[0], 16), parseInt(headerBytes[1], 16)];
 
-                // Получаем Synchro со смещения 0x01 (5 байт)
-                const synchro = data.slice(0x01, 0x06);
+                const synchroBlock = document.getElementById('synchro-block');
 
-                // Смещения ключей идут друг за другом по 5 байт: 0x30, 0x35, 0x3A, 0x3F, 0x44
-                const key1_id = data.slice(0x30, 0x35);
-                const key2_id = data.slice(0x35, 0x3A);
-                const key3_id = data.slice(0x3A, 0x3F);
-                const key4_id = data.slice(0x3F, 0x44);
-                const key5_id = data.slice(0x44, 0x49);
+                // Если это ручной ввод, Synchro недоступно
+                if (isFromFile) {
+                    document.getElementById('synchro').innerText = hexToString(data.slice(0x01, 0x06));
+                    synchroBlock.style.display = 'block';
+                } else {
+                    synchroBlock.style.display = 'none';
+                }
 
-                // Собираем блоки и считаем простую сумму
-                const key1_block = [...header, ...key1_id];
-                const key2_block = [...header, ...key2_id];
-                const key3_block = [...header, ...key3_id];
-                const key4_block = [...header, ...key4_id];
-                const key5_block = [...header, ...key5_id];
+                // Ключи (для ручного ввода используем только Key 1, остальные скрываем или очищаем?)
+                // Пользователь просил "выбор загрузки дампа или ручного ввода key", значит при ручном вводе логика должна работать с одним ключом.
+                // Сделаем так: при ручном вводе заполняем только Key 1.
+                
+                const keyIds = [];
+                if (isFromFile) {
+                    // 5 ключей из дампа
+                    keyIds.push(data.slice(0x30, 0x35));
+                    keyIds.push(data.slice(0x35, 0x3A));
+                    keyIds.push(data.slice(0x3A, 0x3F));
+                    keyIds.push(data.slice(0x3F, 0x44));
+                    keyIds.push(data.slice(0x44, 0x49));
+                } else {
+                    // 1 ключ из ручного ввода
+                    keyIds.push(data);
+                    // Остальные скрываем
+                    document.getElementById('key2').parentElement.style.display = 'none';
+                    document.getElementById('key3').parentElement.style.display = 'none';
+                    document.getElementById('key4').parentElement.style.display = 'none';
+                    document.getElementById('key5').parentElement.style.display = 'none';
+                }
 
-                const checksum1 = calculateChecksum(key1_block);
-                const checksum2 = calculateChecksum(key2_block);
-                const checksum3 = calculateChecksum(key3_block);
-                const checksum4 = calculateChecksum(key4_block);
-                const checksum5 = calculateChecksum(key5_block);
+                // Функция заполнения результата
+                for (let i = 0; i < 5; i++) {
+                    const keyEl = document.getElementById('key' + (i + 1));
+                    if (i < keyIds.length) {
+                        const keyBlock = [...header, ...keyIds[i]];
+                        const sum = calculateChecksum(keyBlock);
+                        keyEl.innerText = hexToString(header) + ' ' + hexToString(keyIds[i]) + ' ' + sum;
+                        keyEl.parentElement.style.display = 'block';
+                    } else {
+                        keyEl.parentElement.style.display = 'none';
+                    }
+                }
 
-                // Финальные строки
-                const synchro_str = hexToString(synchro);
-                const key1_full = hexToString(header) + ' ' + hexToString(key1_id) + ' ' + checksum1;
-                const key2_full = hexToString(header) + ' ' + hexToString(key2_id) + ' ' + checksum2;
-                const key3_full = hexToString(header) + ' ' + hexToString(key3_id) + ' ' + checksum3;
-                const key4_full = hexToString(header) + ' ' + hexToString(key4_id) + ' ' + checksum4;
-                const key5_full = hexToString(header) + ' ' + hexToString(key5_id) + ' ' + checksum5;
-
-                // Показываем результат
-                document.getElementById('output').style.display = 'block';
-
-                document.getElementById('synchro').innerText = synchro_str;
-                document.getElementById('key1').innerText = key1_full;
-                document.getElementById('key2').innerText = key2_full;
-                document.getElementById('key3').innerText = key3_full;
-                document.getElementById('key4').innerText = key4_full;
-                document.getElementById('key5').innerText = key5_full;
-
+                resultDiv.style.display = 'block';
                 tg.HapticFeedback.impactOccurred('success');
-            };
-            reader.readAsArrayBuffer(file);
+            }
         }
     </script>
 </body>
